@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arkivverktøy</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        input, button { margin: 5px 0; padding: 10px; width: 100%; }
+        #results { margin-top: 20px; }
+        .document { padding: 10px; background: #f1f1f1; margin-top: 5px; }
+        .delete-btn { background: red; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Arkivverktøy</h1>
+        <input type="file" id="fileInput">
+        <button onclick="uploadFile()">Last opp</button>
+        <input type="text" id="searchQuery" placeholder="Søk i arkivet">
+        <button onclick="searchDocuments()">Søk</button>
+        <button onclick="exportData('xml')">Eksporter til XML</button>
+        <button onclick="exportData('json')">Eksporter til JSON</button>
+        <button onclick="exportData('xhtml')">Eksporter til XHTML</button>
+        <button onclick="exportData('html5')">Eksporter til HTML5</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let db;
+        
+        // Åpne IndexedDB
+        function openDB() {
+            let request = indexedDB.open("ArchiveDB", 1);
+            request.onupgradeneeded = function(event) {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains("files")) {
+                    db.createObjectStore("files", { keyPath: "name" });
+                }
+            };
+            request.onsuccess = function(event) { db = event.target.result; };
+            request.onerror = function(event) { console.error("IndexedDB error:", event.target.errorCode); };
+        }
+        openDB();
+
+        // Last opp fil
+        function uploadFile() {
+            let file = document.getElementById("fileInput").files[0];
+            if (!file) return alert("Velg en fil.");
+
+            let reader = new FileReader();
+            reader.onload = function(event) {
+                let content = event.target.result;
+                try {
+                    localStorage.setItem(file.name, content);
+                } catch (e) {
+                    saveToIndexedDB(file.name, content);
+                }
+                alert("Fil lastet opp!");
+            };
+            reader.readAsText(file);
+        }
+
+        // Lagre til IndexedDB
+        function saveToIndexedDB(name, content) {
+            let transaction = db.transaction(["files"], "readwrite");
+            let store = transaction.objectStore("files");
+            store.put({ name, content });
+        }
+
+        // Søk i arkivet
+        function searchDocuments() {
+            let query = $("#searchQuery").val().toLowerCase();
+            let resultsDiv = $("#results").empty();
+
+            // Søk i localStorage
+            Object.keys(localStorage).forEach(filename => {
+                let content = localStorage.getItem(filename);
+                if (content.toLowerCase().includes(query)) {
+                    resultsDiv.append(getDocumentHTML(filename, content, "local"));
+                }
+            });
+
+            // Søk i IndexedDB
+            let transaction = db.transaction(["files"], "readonly");
+            let store = transaction.objectStore("files");
+            let request = store.openCursor();
+            request.onsuccess = function(event) {
+                let cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.value.content.toLowerCase().includes(query)) {
+                        resultsDiv.append(getDocumentHTML(cursor.value.name, cursor.value.content, "indexedDB"));
+                    }
+                    cursor.continue();
+                }
+            };
+        }
+
+        // HTML for dokument
+        function getDocumentHTML(name, content, storageType) {
+            return `<div class='document'>
+                        <strong>${name}</strong>
+                        <p>${content}</p>
+                        <button class='delete-btn' onclick="deleteFile('${name}', '${storageType}')">Slett</button>
+                    </div>`;
+        }
+
+        // Slett fil
+        function deleteFile(name, storageType) {
+            if (storageType === "local") {
+                localStorage.removeItem(name);
+            } else {
+                let transaction = db.transaction(["files"], "readwrite");
+                let store = transaction.objectStore("files");
+                store.delete(name);
+            }
+            searchDocuments();
+        }
+
+        // Eksporter data
+        function exportData(type) {
+            let archive = [];
+
+            // Hent fra localStorage
+            Object.keys(localStorage).forEach(filename => {
+                archive.push({ name: filename, content: localStorage.getItem(filename) });
+            });
+
+            // Hent fra IndexedDB
+            let transaction = db.transaction(["files"], "readonly");
+            let store = transaction.objectStore("files");
+            let request = store.openCursor();
+            request.onsuccess = function(event) {
+                let cursor = event.target.result;
+                if (cursor) {
+                    archive.push(cursor.value);
+                    cursor.continue();
+                } else {
+                    generateExportFile(type, archive);
+                }
+            };
+        }
+
+        // Generer eksportfil
+        function generateExportFile(type, archive) {
+            let content = "";
+
+            if (type === "xml") {
+                content = `<?xml version="1.0" encoding="UTF-8"?><arkiv>`;
+                archive.forEach(doc => {
+                    content += `<dokument><navn>${doc.name}</navn><innhold>${doc.content}</innhold></dokument>`;
+                });
+                content += `</arkiv>`;
+            } else if (type === "json") {
+                content = JSON.stringify({ arkiv: archive }, null, 4);
+            } else if (type === "xhtml") {
+                content = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+                    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+                    <html xmlns="http://www.w3.org/1999/xhtml"><head><title>Arkiv</title></head><body><h1>Arkiv</h1>`;
+                archive.forEach(doc => { content += `<div><strong>${doc.name}</strong><p>${doc.content}</p></div>`; });
+                content += `</body></html>`;
+            } else if (type === "html5") {
+                content = `<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><title>Arkiv</title></head><body><h1>Arkiv</h1>`;
+                archive.forEach(doc => { content += `<div><strong>${doc.name}</strong><p>${doc.content}</p></div>`; });
+                content += `</body></html>`;
+            }
+
+            let blob = new Blob([content], { type: "text/plain" });
+            let a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `arkiv.${type}`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
