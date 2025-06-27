@@ -11,7 +11,7 @@ def sanitize_filename(name):
 
 def extract_and_export(arkivfil):
     now = datetime.now().astimezone()
-    datestamp = now.strftime("%Y%m%dT%H%M%S.%f")  # f.eks. 20250628T001502+0200
+    datestamp = now.strftime("%Y%m%dT%H%M%S.%f%z")  # ISO 8601 with fractional seconds before offset
     output_dir = Path(f"arkiv-{datestamp}")
     output_dir.mkdir(exist_ok=True)
 
