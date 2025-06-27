@@ -1,0 +1,5 @@
+#!/bin/bash
+
+pip install pytz
+wget https://www.aamot.io/software/arkiv/arkiv.py
+python3 arkiv.py arkiv.xml
