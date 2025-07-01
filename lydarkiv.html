@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lydarkiv med GEO-MLAR-2025</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet"/>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 2rem;
+      background-color: #f9f9f9;
+      color: #222;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      margin: 1rem 0.5rem 1rem 0;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+    audio {
+      display: block;
+      margin-top: 1rem;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-top: 1rem;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Lydarkiv med GEO-MLAR-2025</h1>
+  <p>Ta opp og lagre lydopptak lokalt i nettleseren din med geolokasjon og metadata.</p>
+
+  <button id="start">🎤 Start opptak</button>
+  <button id="stop" disabled>⏹️ Stopp opptak</button>
+  <audio id="player" controls></audio>
+
+  <label for="notes">Notater / Metadata (eks: tagger, dato, sted):</label>
+  <textarea id="notes" placeholder="Skriv GEO-MLAR-2025 metadata her..."></textarea>
+
+  <button id="save">💾 Lagre opptak</button>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let currentPosition = {};
+
+    // Start geolokasjon
+    navigator.geolocation.getCurrentPosition(pos => {
+      currentPosition = {
+        lat: pos.coords.latitude.toFixed(6),
+        lon: pos.coords.longitude.toFixed(6),
+        timestamp: new Date().toISOString()
+      };
+    });
+
+    $('#start').click(async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = e => {
+        audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); // Simulert FLAC/Opus via WebM
+        const audioUrl = URL.createObjectURL(audioBlob);
+        $('#player').attr('src', audioUrl);
+        $('#player')[0].load();
+      };
+
+      mediaRecorder.start();
+      $('#start').prop('disabled', true);
+      $('#stop').prop('disabled', false);
+    });
+
+    $('#stop').click(() => {
+      mediaRecorder.stop();
+      $('#start').prop('disabled', false);
+      $('#stop').prop('disabled', true);
+    });
+
+    $('#save').click(() => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const key = `opptak_${Date.now()}`;
+        const metadata = {
+          glat: currentPosition.lat,
+          glon: currentPosition.lon,
+          time: currentPosition.timestamp,
+          notes: $('#notes').val(),
+          audio: reader.result
+        };
+        localStorage.setItem(key, JSON.stringify(metadata));
+        alert('Opptaket er lagret i nettleseren.');
+      };
+      reader.readAsDataURL(blob);
+    });
+  </script>
+  <p><a href="https://www.aamot.io/software/lydarkiv/lydarkiv-viewer.html">📂 Lydarkiv – Lokalt lagrede opptak</a></p>
+  <p><a href="https://www.aamot.io/software/lydsøk/lydsøk.html">🔍 Søk i lydarkivet</a></p>  
+  <p><a href="https://www.aamot.io/software/kartlyd/kartlyd.html">🎧🗺️ Utforsk verden med ørene – prøv Kartlyd fra Aamot Innovation!</a></p>
+  <p><a href="https://www.aamot.io/software/arkiv/arkiv.html">📂 Søk i ditt eget digitale arkiv – direkte i nettleseren!</a></p>
+</body>
+</html>

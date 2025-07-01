@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lydarkiv – Vis opptak</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f0f0;
+      color: #222;
+      margin: 2rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .entry {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .entry h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+    }
+    .meta {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 0.5rem;
+    }
+    audio {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>📂 Lydarkiv – Lokalt lagrede opptak</h1>
+  <div id="entries"></div>
+
+  <script>
+    function loadEntries() {
+      const container = $('#entries');
+      container.empty();
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('opptak_'));
+      if (keys.length === 0) {
+        container.append('<p>Ingen opptak funnet i nettleseren.</p>');
+        return;
+      }
+
+      keys.sort().reverse(); // Nyeste først
+      keys.forEach(key => {
+        try {
+          const entry = JSON.parse(localStorage.getItem(key));
+          const html = `
+            <div class="entry">
+              <h3>Opptak: ${key}</h3>
+              <div class="meta">
+                📍 Lat: ${entry.glat}, Lon: ${entry.glon}<br>
+                🕒 Tid: ${entry.time}<br>
+                📝 Notater: ${entry.notes || '(Ingen)'}
+              </div>
+              <audio controls src="${entry.audio}"></audio>
+            </div>
+          `;
+          container.append(html);
+        } catch (e) {
+          console.error('Feil ved lasting av oppføring:', key, e);
+        }
+      });
+    }
+
+    $(document).ready(loadEntries);
+  </script>
+  <p><a href="https://www.aamot.io/software/lydarkiv/lydarkiv.html">🎙️ Lydarkiv med GEO-MLAR-2025</a></p>
+  <p><a href="https://www.aamot.io/software/lydsøk/lydsøk.html">🔍 Søk i lydarkivet</a></p>
+  <p><a href="https://www.aamot.io/software/kartlyd/kartlyd.html">🎧🗺️ Utforsk verden med ørene – prøv Kartlyd fra Aamot Innovation!</a></p>
+  <p><a href="https://www.aamot.io/software/arkiv/arkiv.html">📂 Søk i ditt eget digitale arkiv – direkte i nettleseren!</a></p>
+</body>
+</html>
+

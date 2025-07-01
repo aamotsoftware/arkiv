@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lydkart Audio Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      width: 100vw;
+      height: 100vh;
+    }
+    .popup-audio {
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <p><a href="https://www.aamot.io/software/lydarkiv/lydarkiv-viewer.html">📂 Lydarkiv – Lokalt lagrede opptak</a></p>
+  <p><a href="https://www.aamot.io/software/lydsøk/lydsøk.html">🔍 Søk i lydarkivet</a></p>
+  <p><a href="https://www.aamot.io/software/kartlyd/kartlyd.html">🎧🗺️ Utforsk verden med ørene – prøv Kartlyd fra Aamot Innovation!</a></p>
+  <p><a href="https://www.aamot.io/software/arkiv/arkiv.html">📂 Søk i ditt eget digitale arkiv – direkte i nettleseren!</a></p>
+  <script>
+    const map = L.map('map').setView([59.9139, 10.7522], 12); // Oslo koordinater
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> bidragsytere'
+    }).addTo(map);
+
+    // Hent alle lydopptak fra localStorage
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('opptak_')) {
+        const data = JSON.parse(localStorage.getItem(key));
+        if (data.glat && data.glon && data.audio) {
+          const marker = L.marker([parseFloat(data.glat), parseFloat(data.glon)]).addTo(map);
+          const popupContent = `
+            <div class="popup-audio">
+              <strong>Opptak:</strong>
+              <audio controls src="${data.audio}"></audio>
+              <p><em>${data.notes}</em></p>
+              <small>${data.time}</small>
+            </div>
+          `;
+          marker.bindPopup(popupContent);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Søkeverktøy med grupperte resultater</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+    input, button { margin: 5px 0; padding: 10px; width: 100%; }
+    .result-group { margin-top: 20px; background: #fff; padding: 15px; border: 1px solid #ccc; border-radius: 8px; }
+    .group-title { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
+    .entry { padding: 5px 0; border-bottom: 1px dashed #ccc; }
+    .entry:last-child { border-bottom: none; }
+    .meta { font-size: 0.9em; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Søk i arkivet</h1>
+  <p><a href="https://www.aamot.io/software/lydarkiv/lydarkiv.html">🎙️ Lydarkiv med GEO-MLAR-2025</a></p>
+  <input type="text" id="searchInput" placeholder="Søk etter tekst, tittel eller metadata">
+  <button onclick="performSearch()">Søk</button>
+
+  <div id="searchResults"></div>
+
+  <h3>Introduksjon</h3>
+  <p>Denne dokumentasjonen beskriver funksjonen "Søk i arkivet" som lar brukere søke etter opptak i lydarkivet og deres egne digitale arkiver. Systemet tilbyr en brukervennlig plattform for å tilgå og utforske lagrede lydopptak.</p>
+  <h3>Funksjoner</h3>
+  <p>Søkefunksjon: Brukere kan søke etter spesifikke lydopptak i både det lokale lydarkivet og deres egne digitale arkiver.</p>
+  <p>Lydarkiv: Har tilgang til lokalt lagrede opptak, som kan grupperes eller kategoriseres for enklere tilgang.</p>
+  <p>Kartlyd: Mulighet til å utforske lydopptak basert på geografiske steder gjennom Kartlyd fra Aamot Innovation.</p>
+  <h3>Bruk av Søk i Arkivet</h3>
+  <ul>
+    <li>Trinn 1: Åpne Søkefunksjonen<br />
+      Gå til Søk i lydarkivet-seksjonen i hovedmenyen.
+      Klikk på søkefeltet merket med 🔍.</li>
+    <li>Trinn 2: Utføre et Søk<br />
+      Skriv inn den teksten, navnet eller emnet du leter etter.
+      Klikk på søkeknappen eller trykk Enter for å starte søket.</li>
+    <li>Trinn 3: Se Resultater<br />
+      Hvis det ikke finnes treff, vises meldingen "Ingen treff."
+      Hvis det finnes treff, vil relevante opptak vises i listen under søkefeltet.</li>
+    <li>Trinn 4: Utforske Lydarkivet<br />
+      For å utforske lydarkivet, klikk på 🎧🗺️ Utforsk verden med ørene for å få tilgang til Kartlyd-funksjonen.
+      Dette lar deg navigere gjennom lydopptak basert på geografiske områder, og gir en mer interaktiv opplevelse.</li>
+    <li>Trinn 5: Søk i Ditt Egne Digitale Arkiv<br />
+      <p>Klikk på 📂 Søk i ditt eget digitale arkiv for å begynne søket i personlige opptak.</li>
+  </ul>
+  <p>Følg de samme prosedyrene som nevnt tidligere for søkefunksjonen.</p>
+  <h3>Feilsøking
+  <p>Ingen treff: Hvis søket viser "Ingen treff," forsikre deg om at søketermen er korrekt stavet. Prøv alternative søkeord eller fraser.
+    Oppdatering av arkiv: Hvis du nylig har lagt til opptak og de ikke vises i søket, prøv å oppdatere siden eller sjekke innstillingene for arkivet.</p>
+  <h3>Kontaktinformasjon</h3>
+  <p>For ytterligere hjelp eller spørsmål, vennligst kontakt supportteamet via e-post eller telefon som oppgitt i hjelpe-seksjonen på plattformen.
+
+  <h3>Konklusjon</h3>
+  <p>Funksjonen "Søk i arkivet" gir en effektiv måte for brukere å tilgå og utforske både lokale og personlige lydopptak. Med brukervennlige søkemuligheter og interaktive elementer som Kartlyd, kan brukerne enkelt navigere i innholdet og få mest mulig ut av sine digitale arkiver.</p>
+
+  <script>
+    function performSearch() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const resultsDiv = document.getElementById('searchResults');
+      resultsDiv.innerHTML = '';
+
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('opptak_'));
+      const grouped = {}; // { keyword: [entries] }
+
+      keys.forEach(key => {
+        try {
+          const entry = JSON.parse(localStorage.getItem(key));
+          const content = `${entry.notes} ${entry.time} ${key}`.toLowerCase();
+          if (content.includes(query)) {
+            const keyword = key.split('_')[1] || 'Uten kategori';
+            if (!grouped[keyword]) grouped[keyword] = [];
+            grouped[keyword].push({
+              title: key,
+              date: entry.time,
+              notes: entry.notes,
+              filename: key,
+              audio: entry.audio
+            });
+          }
+        } catch (e) {
+          console.error('Feil ved parsing:', key);
+        }
+      });
+
+      if (Object.keys(grouped).length === 0) {
+        resultsDiv.innerHTML = '<p>Ingen treff.</p>';
+        return;
+      }
+
+      for (const keyword in grouped) {
+        const group = grouped[keyword];
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'result-group';
+        groupDiv.innerHTML = `<div class="group-title">Søkeord: ${keyword}</div>`;
+
+        group.forEach(entry => {
+          const entryHTML = `
+            <div class="entry">
+              <div><strong>${entry.title}</strong></div>
+              <div class="meta">Dato: ${entry.date} | Filnavn: ${entry.filename}</div>
+              <div class="meta">Notater: ${entry.notes || '(Ingen)'}</div>
+              <audio controls src="${entry.audio}"></audio>
+            </div>
+          `;
+          groupDiv.innerHTML += entryHTML;
+        });
+
+        resultsDiv.appendChild(groupDiv);
+      }
+    }
+  </script>
+  <p><a href="https://www.aamot.io/software/lydarkiv/lydarkiv-viewer.html">📂 Lydarkiv – Lokalt lagrede opptak</a></p>
+  <p><a href="https://www.aamot.io/software/lydsøk/lydsøk.html">🔍 Søk i lydarkivet</a></p>
+  <p><a href="https://www.aamot.io/software/kartlyd/kartlyd.html">🎧🗺️ Utforsk verden med ørene – prøv Kartlyd fra Aamot Innovation!</a></p>
+  <p><a href="https://www.aamot.io/software/arkiv/arkiv.html">📂 Søk i ditt eget digitale arkiv – direkte i nettleseren!</a></p>
+</body>
+</html>
